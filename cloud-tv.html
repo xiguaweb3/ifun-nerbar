@@ -33,64 +33,47 @@
     </footer>
 
     <script>
-        const API_URL = "https://npoint.io";
-
-        // 内置保底本地数据，一旦公网断开连接，电视会自动切换显示这套数据，绝不卡死
-        let localBackup = {
-            "1": { name: "⚡ CYBER GAME IFUN (HÀ NỘI) ⚡", footer: "Khuyến mãi: Nạp 100k tặng 50k! Nghiêm cấm người dưới 18 tuổi.", zones: [{ name: "Khu Máy Thường", price1: "6.000", price2: "5.000" }, { name: "Khu VIP Box", price1: "15.000", price2: "12.000" }] },
-            "2": { name: "⚡ CYBER GAME IFUN (TP.HCM) ⚡", footer: "Chào mừng quý khách! Chúc các bạn chơi game vui vẻ.", zones: [{ name: "Khu Standard", price1: "7.000", price2: "6.000" }, { name: "Khu VIP Pro", price1: "18.000", price2: "14.000" }] },
-            "3": { name: "⚡ CYBER GAME IFUN (ĐÀ NẴNG) ⚡", footer: "Giảm giá 20% cho học sinh sinh viên mang theo thẻ.", zones: [{ name: "Khu Gaming", price1: "8.000", price2: "6.500" }] }
-        };
-
-        function render(db) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const barId = urlParams.get('id') || '1'; 
-            const barData = db[barId] || localBackup[barId];
-
-            document.getElementById('bar-name').innerText = barData.name;
-            document.getElementById('bar-footer').innerText = barData.footer;
-
-            let htmlContent = '';
-            barData.zones.forEach(zone => {
-                htmlContent += `
-                    <div class="zone-card">
-                        <div class="zone-title">${zone.name}</div>
-                        <div class="price-box">
-                            <div class="price-row">
-                                <span class="price-label">Khách vãng lai:</span>
-                                <div class="price-value"><span>${zone.price1}</span> đ/h</div>
-                            </div>
-                            <div class="price-row">
-                                <span class="price-label">Hội viên:</span>
-                                <div class="price-value"><span>${zone.price2}</span> đ/h</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            document.getElementById('card-container').innerHTML = htmlContent;
-        }
-
-        async function pullCloudData() {
+        async function pullData() {
             try {
-                const response = await fetch(`${API_URL}?nocache=${new Date().getTime()}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if(data && typeof data === 'object') {
-                        render(data);
-                        return;
-                    }
+                // 直接抓取你自己顶级稳定不锁墙的本地部署数据文件
+                const response = await fetch('./data.json?t=' + new Date().getTime());
+                if (!response.ok) return;
+                const db = await response.json();
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const barId = urlParams.get('id') || '1'; 
+                const barData = db[barId];
+
+                if(barData) {
+                    document.getElementById('bar-name').innerText = barData.name;
+                    document.getElementById('bar-footer').innerText = barData.footer;
+
+                    let htmlContent = '';
+                    barData.zones.forEach(zone => {
+                        htmlContent += `
+                            <div class="zone-card">
+                                <div class="zone-title">${zone.name}</div>
+                                <div class="price-box">
+                                    <div class="price-row">
+                                        <span class="price-label">Khách vãng lai:</span>
+                                        <div class="price-value"><span>${zone.price1}</span> đ/h</div>
+                                    </div>
+                                    <div class="price-row">
+                                        <span class="price-label">Hội viên:</span>
+                                        <div class="price-value"><span>${zone.price2}</span> đ/h</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('card-container').innerHTML = htmlContent;
                 }
-                render(localBackup); // 失败时用本地数据兜底
-            } catch (error) {
-                render(localBackup); // 报错时用本地数据兜底
-            }
+            } catch (error) { console.log(error); }
         }
 
-        // 首次加载
-        pullCloudData();
-        // 每 6 秒检测一次同步
-        setInterval(pullCloudData, 6000);
+        pullData();
+        // 每 15 秒同步一次（由于 GitHub 同步本身有几十秒小缓存，这样最省性能且绝不闪烁报错）
+        setInterval(pullData, 15000);
     </script>
 </body>
 </html>
