@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>BẢNG GIÁ NET - TV DISPLAY</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: #0b0f19; color: #ffffff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; padding: 4vh 5vw; }
+        header { text-align: center; margin-bottom: 5vh; }
+        header h1 { font-size: 3.8rem; color: #00ffcc; letter-spacing: 2px; text-shadow: 0 0 25px rgba(0, 255, 204, 0.7); font-weight: 800; }
+        .container { display: flex; justify-content: center; gap: 40px; flex: 1; margin-bottom: 4vh; align-items: center; }
+        .zone-card { flex: 1; max-width: 500px; background: linear-gradient(145deg, #131a2e, #0d1527); border: 2px solid #1e294b; border-radius: 20px; padding: 40px; display: flex; flex-direction: column; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6); }
+        .zone-title { font-size: 2.8rem; font-weight: bold; margin-bottom: 35px; padding-bottom: 15px; border-bottom: 3px solid #1e294b; color: #38bdf8; text-align: center; text-transform: uppercase; }
+        .price-box { background: rgba(0, 0, 0, 0.3); border-radius: 12px; padding: 25px; }
+        .price-row { display: flex; justify-content: space-between; font-size: 2rem; margin-bottom: 20px; align-items: center; color: #cbd5e1; }
+        .price-row:last-child { margin-bottom: 0; }
+        .price-label { font-weight: 500; }
+        .price-value { font-weight: 800; color: #ffffff; }
+        .price-value span { font-size: 3.5rem; color: #00ffcc; font-style: italic; }
+        footer { text-align: center; color: #ff0055; font-size: 1.8rem; border-top: 2px solid #1e294b; padding-top: 2vh; font-weight: bold; }
+        .loading { font-size: 2rem; color: #8892b0; text-align: center; margin-top: 25vh; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="bar-name">ĐANG ĐỒNG BỘ DỮ LIỆU...</h1>
+    </header>
+
+    <div class="container" id="card-container">
+        <div class="loading">🛰️ Đang kết nối server, vui lòng đợi giây lát...</div>
+    </div>
+
+    <footer>
+        <marquee id="bar-footer" scrollamount="6">Đang tải thông báo từ hệ thống...</marquee>
+    </footer>
+
+    <script>
+        const DATA_KEY = "feiyu-vietnam-netbar-2026"; 
+        const API_URL = `https://jsonstorage.net{DATA_KEY}`;
+
+        async function pullCloudData() {
+            try {
+                const response = await fetch(`${API_URL}?nocache=${new Date().getTime()}`);
+                if (!response.ok) return;
+                
+                const db = await response.json();
+                
+                // 从网址获取当前分店编号 (Ví dụ: tv.html?id=2)
+                const urlParams = new URLSearchParams(window.location.search);
+                const barId = urlParams.get('id') || '1'; 
+
+                if (db && db[barId]) {
+                    const barData = db[barId];
+                    document.getElementById('bar-name').innerText = barData.name;
+                    document.getElementById('bar-footer').innerText = barData.footer;
+
+                    let htmlContent = '';
+                    barData.zones.forEach(zone => {
+                        htmlContent += `
+                            <div class="zone-card">
+                                <div class="zone-title">${zone.name}</div>
+                                <div class="price-box">
+                                    <div class="price-row">
+                                        <span class="price-label">Khách vãng lai:</span>
+                                        <div class="price-value"><span>${zone.price1}</span> đ/h</div>
+                                    </div>
+                                    <div class="price-row">
+                                        <span class="price-label">Hội viên:</span>
+                                        <div class="price-value"><span>${zone.price2}</span> đ/h</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('card-container').innerHTML = htmlContent;
+                }
+            } catch (error) {
+                console.error("Lỗi kết nối Cloud, đang thử lại...", error);
+            }
+        }
+
+        pullCloudData();
+        // 每隔 8 秒自动向云端拉取一次最新价格
+        setInterval(pullCloudData, 8000);
+    </script>
+</body>
+</html>
