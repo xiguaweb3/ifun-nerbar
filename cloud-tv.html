@@ -35,7 +35,6 @@
     <script>
         async function pullData() {
             try {
-                // 直接抓取你自己顶级稳定不锁墙的本地部署数据文件
                 const response = await fetch('./data.json?t=' + new Date().getTime());
                 if (!response.ok) return;
                 const db = await response.json();
@@ -72,7 +71,6 @@
         }
 
         pullData();
-        // 每 15 秒同步一次（由于 GitHub 同步本身有几十秒小缓存，这样最省性能且绝不闪烁报错）
         setInterval(pullData, 15000);
     </script>
 </body>
