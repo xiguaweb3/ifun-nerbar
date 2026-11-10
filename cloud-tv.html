@@ -18,72 +18,79 @@
         .price-value { font-weight: 800; color: #ffffff; }
         .price-value span { font-size: 3.5rem; color: #00ffcc; font-style: italic; }
         footer { text-align: center; color: #ff0055; font-size: 1.8rem; border-top: 2px solid #1e294b; padding-top: 2vh; font-weight: bold; }
-        .loading { font-size: 2rem; color: #8892b0; text-align: center; margin-top: 25vh; width: 100%; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1 id="bar-name">ĐANG ĐỒNG BỘ DỮ LIỆU...</h1>
+        <h1 id="bar-name">⚡ CYBER GAME IFUN ⚡</h1>
     </header>
 
-    <div class="container" id="card-container">
-        <div class="loading">🛰️ Đang kết nối server, vui lòng đợi giây lát...</div>
-    </div>
+    <div class="container" id="card-container"></div>
 
     <footer>
-        <marquee id="bar-footer" scrollamount="6">Đang tải thông báo từ hệ thống...</marquee>
+        <marquee id="bar-footer" scrollamount="6">Chào mừng quý khách đến với IFUN Cyber Game!</marquee>
     </footer>
 
     <script>
-        const DATA_KEY = "ifun_netbar_vietnam_database_v2";
-        const API_URL = `https://kv.rest{DATA_KEY}`;
+        const API_URL = "https://npoint.io";
+
+        // 内置保底本地数据，一旦公网断开连接，电视会自动切换显示这套数据，绝不卡死
+        let localBackup = {
+            "1": { name: "⚡ CYBER GAME IFUN (HÀ NỘI) ⚡", footer: "Khuyến mãi: Nạp 100k tặng 50k! Nghiêm cấm người dưới 18 tuổi.", zones: [{ name: "Khu Máy Thường", price1: "6.000", price2: "5.000" }, { name: "Khu VIP Box", price1: "15.000", price2: "12.000" }] },
+            "2": { name: "⚡ CYBER GAME IFUN (TP.HCM) ⚡", footer: "Chào mừng quý khách! Chúc các bạn chơi game vui vẻ.", zones: [{ name: "Khu Standard", price1: "7.000", price2: "6.000" }, { name: "Khu VIP Pro", price1: "18.000", price2: "14.000" }] },
+            "3": { name: "⚡ CYBER GAME IFUN (ĐÀ NẴNG) ⚡", footer: "Giảm giá 20% cho học sinh sinh viên mang theo thẻ.", zones: [{ name: "Khu Gaming", price1: "8.000", price2: "6.500" }] }
+        };
+
+        function render(db) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const barId = urlParams.get('id') || '1'; 
+            const barData = db[barId] || localBackup[barId];
+
+            document.getElementById('bar-name').innerText = barData.name;
+            document.getElementById('bar-footer').innerText = barData.footer;
+
+            let htmlContent = '';
+            barData.zones.forEach(zone => {
+                htmlContent += `
+                    <div class="zone-card">
+                        <div class="zone-title">${zone.name}</div>
+                        <div class="price-box">
+                            <div class="price-row">
+                                <span class="price-label">Khách vãng lai:</span>
+                                <div class="price-value"><span>${zone.price1}</span> đ/h</div>
+                            </div>
+                            <div class="price-row">
+                                <span class="price-label">Hội viên:</span>
+                                <div class="price-value"><span>${zone.price2}</span> đ/h</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('card-container').innerHTML = htmlContent;
+        }
 
         async function pullCloudData() {
             try {
-                const response = await fetch(API_URL);
-                if (!response.ok) return;
-                
-                const dataText = await response.text();
-                if(!dataText || dataText === "null") return;
-                const db = JSON.parse(dataText);
-                
-                const urlParams = new URLSearchParams(window.location.search);
-                const barId = urlParams.get('id') || '1'; 
-
-                if (db && db[barId]) {
-                    const barData = db[barId];
-                    document.getElementById('bar-name').innerText = barData.name;
-                    document.getElementById('bar-footer').innerText = barData.footer;
-
-                    let htmlContent = '';
-                    barData.zones.forEach(zone => {
-                        htmlContent += `
-                            <div class="zone-card">
-                                <div class="zone-title">${zone.name}</div>
-                                <div class="price-box">
-                                    <div class="price-row">
-                                        <span class="price-label">Khách vãng lai:</span>
-                                        <div class="price-value"><span>${zone.price1}</span> đ/h</div>
-                                    </div>
-                                    <div class="price-row">
-                                        <span class="price-label">Hội viên:</span>
-                                        <div class="price-value"><span>${zone.price2}</span> đ/h</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    document.getElementById('card-container').innerHTML = htmlContent;
+                const response = await fetch(`${API_URL}?nocache=${new Date().getTime()}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if(data && typeof data === 'object') {
+                        render(data);
+                        return;
+                    }
                 }
+                render(localBackup); // 失败时用本地数据兜底
             } catch (error) {
-                console.error("Lỗi kết nối Cloud, đang thử lại...", error);
+                render(localBackup); // 报错时用本地数据兜底
             }
         }
 
+        // 首次加载
         pullCloudData();
-        // 每隔 5 秒极速拉取，确保秒级同步
-        setInterval(pullCloudData, 5000);
+        // 每 6 秒检测一次同步
+        setInterval(pullCloudData, 6000);
     </script>
 </body>
 </html>
