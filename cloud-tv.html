@@ -36,17 +36,18 @@
     </footer>
 
     <script>
-        const DATA_KEY = "feiyu-vietnam-netbar-2026"; 
-        const API_URL = `https://jsonstorage.net{DATA_KEY}`;
+        const DATA_KEY = "ifun_netbar_vietnam_database_v2";
+        const API_URL = `https://kv.rest{DATA_KEY}`;
 
         async function pullCloudData() {
             try {
-                const response = await fetch(`${API_URL}?nocache=${new Date().getTime()}`);
+                const response = await fetch(API_URL);
                 if (!response.ok) return;
                 
-                const db = await response.json();
+                const dataText = await response.text();
+                if(!dataText || dataText === "null") return;
+                const db = JSON.parse(dataText);
                 
-                // 从网址获取当前分店编号 (Ví dụ: tv.html?id=2)
                 const urlParams = new URLSearchParams(window.location.search);
                 const barId = urlParams.get('id') || '1'; 
 
@@ -81,8 +82,8 @@
         }
 
         pullCloudData();
-        // 每隔 8 秒自动向云端拉取一次最新价格
-        setInterval(pullCloudData, 8000);
+        // 每隔 5 秒极速拉取，确保秒级同步
+        setInterval(pullCloudData, 5000);
     </script>
 </body>
 </html>
