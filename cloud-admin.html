@@ -2,12 +2,15 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Quản Lý Bảng Giá Quán Net - Local Admin</title>
+    <title>Quản Lý Bảng Giá Quán Net - Auto Cloud Admin</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; padding: 30px; color: #333; }
         .admin-box { max-width: 650px; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 0 auto; }
         h2 { text-align: center; color: #1e293b; margin-bottom: 5px; }
         p.subtitle { text-align: center; color: #64748b; margin-bottom: 25px; font-size: 0.95rem; }
+        .status-bar { text-align: center; padding: 8px; margin-bottom: 20px; border-radius: 4px; font-size: 0.9rem; font-weight: bold; }
+        .status-load { background: #e0f2fe; color: #0369a1; }
+        .status-success { background: #dcfce7; color: #15803d; }
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; color: #475569; }
         select, input, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
@@ -15,17 +18,25 @@
         .zone-title { font-weight: bold; color: #0f766e; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
         .price-inputs { display: flex; gap: 15px; }
         .price-inputs div { flex: 1; }
-        button { width: 100%; background: #10b981; color: white; padding: 14px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: background 0.2s; margin-bottom: 15px; }
-        button:hover { background: #059669; }
-        .json-output { background: #1e293b; color: #00ffcc; padding: 15px; border-radius: 6px; font-family: monospace; display: none; white-space: pre-wrap; word-break: break-all; margin-top: 15px; }
+        button { width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        button:hover { background: #1d4ed8; }
+        .tips { margin-top: 15px; font-size: 0.85rem; color: #64748b; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="admin-box">
-    <h2>🌐 HỆ THỐNG CẬP NHẬT GIÁ MỚI</h2>
-    <p class="subtitle">Bảng điều khiển tạo dữ liệu giá (Bản Việt Nam)</p>
+    <h2>🌐 HỆ THỐNG QUẢN LÝ BẢNG GIÁ AUTO</h2>
+    <p class="subtitle">Bảng điều khiển tự động đồng bộ qua GitHub API</p>
+    <div id="status" class="status-bar status-success">Đang sử dụng cấu hình Local, sẵn sàng đồng bộ</div>
     
+    <!-- 安全钥匙配置输入框 -->
+    <div class="form-group" style="background: #fff7ed; padding: 15px; border-radius: 6px; border: 1px solid #ffedd5;">
+        <label style="color: #c2410c;">Mật mã kết nối GitHub (GitHub Token):</label>
+        <input type="password" id="gh-token" placeholder="Dán mã ghp_... vào đây để lưu tự động" onchange="saveTokenToLocal()">
+        <p style="font-size: 0.8rem; color: #9a3412; margin-top: 5px;">* Mã này được lưu an toàn tại trình duyệt của bạn, không bị lộ ra ngoài.</p>
+    </div>
+
     <div class="form-group">
         <label>Chọn chi nhánh để sửa (选择网吧分店):</label>
         <select id="bar-select" onchange="switchBar()">
@@ -47,35 +58,44 @@
         <textarea id="bar-footer" rows="2"></textarea>
     </div>
 
-    <button onclick="generateData()">📋 BẤM VÀO ĐÂY ĐỂ COPPY DỮ LIỆU MỚI</button>
-    
-    <div id="output-area" style="display:none;">
-        <label style="color: #e11d48; font-weight: bold;">👉 Bước tiếp theo (下一步):</label>
-        <p style="font-size:0.9rem; color:#475569; margin-bottom: 10px;">Dữ liệu đã được tự động copy! Vui lòng mở file <b>data.json</b> trên GitHub của bạn, bấm Sửa (Edit) rồi Dán (Paste) đè lên toàn bộ dữ liệu cũ và lưu lại là xong!</p>
-        <div id="json-box" class="json-output"></div>
-    </div>
+    <button onclick="saveToGitHub()">☁️ LƯU THAY ĐỔI & ĐỒNG BỘ TV AUTOMATIC</button>
+    <div class="tips">Hệ thống sử dụng cổng kết nối chính thức của GitHub. Sau khi lưu thành công, TV sẽ tự động cập nhật sau 30-60 giây.</div>
 </div>
 
 <script>
-// 基础架构数据
-let globalDatabase = {
-    "1": { "name": "⚡ CYBER GAME IFUN (HÀ NỘI) ⚡", "footer": "Khuyến mãi: Nạp 100k tặng 50k! Nghiêm cấm người dưới 18 tuổi.", "zones": [{ "name": "Khu Máy Thường", "price1": "6.000", "price2": "5.000" }, { "name": "Khu VIP Box", "price1": "15.000", "price2": "12.000" }] },
-    "2": { "name": "⚡ CYBER GAME IFUN (TP.HCM) ⚡", "footer": "Chào mừng quý khách! Chúc các bạn chơi game vui vẻ.", "zones": [{ "name": "Khu Standard", "price1": "7.000", "price2": "6.000" }, { "name": "Khu VIP Pro", "price1": "18.000", "price2": "14.000" }] },
-    "3": { "name": "⚡ CYBER GAME IFUN (ĐÀ NẴNG) ⚡", "footer": "Giảm giá 20% cho học sinh sinh viên mang theo thẻ.", "zones": [{ "name": "Khu Gaming", "price1": "8.000", "price2": "6.500" }] }
-};
+// 自动定位你自己的 GitHub 仓库路径
+const GH_USER = "xiguaweb3";
+const GH_REPO = "ifun-nerbar";
+const FILE_PATH = "data.json";
+const API_URL = `https://github.com{GH_USER}/${GH_REPO}/contents/${FILE_PATH}`;
 
-// 尝试从你本地在线的 data.json 预加载最新配置（如果没有，则用上面的默认配置）
+let globalDatabase = {};
+
+// 自动读取你在浏览器里填过的 Token，不用每次都输入
+if(localStorage.getItem('GH_NETBAR_TOKEN')) {
+    document.getElementById('gh-token').value = localStorage.getItem('GH_NETBAR_TOKEN');
+}
+
+function saveTokenToLocal() {
+    localStorage.setItem('GH_NETBAR_TOKEN', document.getElementById('gh-token').value);
+}
+
 async function initAdmin() {
     try {
-        const res = await fetch('./data.json?t=' + new Date().getTime());
-        if(res.ok) globalDatabase = await res.json();
-    } catch(e) {}
-    switchBar();
+        const res = await fetch(`./data.json?t=${new Date().getTime()}`);
+        if(res.ok) {
+            globalDatabase = await res.json();
+            switchBar();
+        }
+    } catch(e) {
+        showStatus("Lỗi tải dữ liệu ban đầu!", "load");
+    }
 }
 
 function switchBar() {
     const id = document.getElementById('bar-select').value;
     const bar = globalDatabase[id];
+    if(!bar) return;
     document.getElementById('bar-name').value = bar.name;
     document.getElementById('bar-footer').value = bar.footer;
 
@@ -100,7 +120,15 @@ function switchBar() {
     });
 }
 
-function generateData() {
+async function saveToGitHub() {
+    const token = document.getElementById('gh-token').value.trim();
+    if(!token) {
+        alert("Vui lòng nhập GitHub Token trước khi lưu!");
+        return;
+    }
+
+    showStatus("Đang đồng bộ dữ liệu trực tiếp lên GitHub...", "load");
+    
     const id = document.getElementById('bar-select').value;
     globalDatabase[id].name = document.getElementById('bar-name').value;
     globalDatabase[id].footer = document.getElementById('bar-footer').value;
@@ -109,18 +137,52 @@ function generateData() {
         zone.price2 = document.getElementById(`p2-${index}`).value;
     });
 
-    const jsonStr = JSON.stringify(globalDatabase, null, 2);
-    document.getElementById('json-box').innerText = jsonStr;
-    document.getElementById('output-area').style.display = 'block';
-    document.getElementById('json-box').style.display = 'block';
+    try {
+        // 第一步：获取原文件的 sha 校验码（GitHub写入安全机制必需要）
+        const getRes = await fetch(API_URL, {
+            headers: { "Authorization": `token ${token}` }
+        });
+        
+        let sha = "";
+        if(getRes.ok) {
+            const fileData = await getRes.json();
+            sha = fileData.sha;
+        }
 
-    // 自动复制到剪贴板
-    navigator.clipboard.writeText(jsonStr).then(() => {
-        alert("Đã Copy thành công dữ liệu mới vào bộ nhớ tạm!");
-    }).catch(() => {
-        alert("Vui lòng bôi đen sao chép khung màu xanh ở dưới!");
-    });
+        // 第二步：将最新数据转化为 Base64 编码并直接写入你的 GitHub 仓库
+        const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(globalDatabase, null, 2))));
+        
+        const putRes = await fetch(API_URL, {
+            method: "PUT",
+            headers: {
+                "Authorization": `token ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                message: "Update price via Cloud Admin Panel",
+                content: updatedContent,
+                sha: sha
+            })
+        });
+
+        if(putRes.ok) {
+            showStatus("✨ ĐỒNG BỘ THÀNH CÔNG! Dữ liệu đã lưu lên GitHub.", "success");
+            alert("Lưu và đồng bộ thành công! GitHub đang cập nhật dữ liệu ra TV.");
+        } else {
+            const errData = await putRes.json();
+            showStatus(`Lỗi kết nối GitHub: ${errData.message}`, "load");
+        }
+    } catch (error) {
+        showStatus("Lỗi mạng đường truyền GitHub API!", "load");
+    }
 }
+
+function showStatus(text, type) {
+    const el = document.getElementById('status');
+    el.innerText = text;
+    el.className = `status-bar status-${type}`;
+}
+
 initAdmin();
 </script>
 </body>
