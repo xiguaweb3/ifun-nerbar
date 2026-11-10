@@ -28,7 +28,7 @@
 <div class="admin-box">
     <h2>🌐 HỆ THỐNG QUẢN LÝ BẢNG GIÁ</h2>
     <p class="subtitle">云端多店网吧价目管理后台 (Bản Việt Nam)</p>
-    <div id="status" class="status-bar status-load">Đang kết nối cơ sở dữ liệu cloud...</div>
+    <div id="status" class="status-bar status-load">Đang kết nối cơ sở dữ liệu...</div>
     
     <div class="form-group">
         <label>Chọn chi nhánh (选择网吧分店):</label>
@@ -52,13 +52,12 @@
     </div>
 
     <button onclick="saveToCloud()">☁️ LƯU THAY ĐỔI & ĐỒNG BỘ TV</button>
-    <div class="tips">Sau khi bấm Lưu, tivi ở các chi nhánh sẽ tự động cập nhật giá mới trong vòng 5秒.</div>
+    <div class="tips">Sau khi bấm Lưu, tivi ở các chi nhánh sẽ tự động cập nhật giá mới trong vòng 5 giây.</div>
 </div>
 
 <script>
-// 使用高速免签跨域专线
-const DATA_KEY = "ifun_netbar_vietnam_database_v2";
-const API_URL = `https://kv.rest{DATA_KEY}`;
+// 改用对越南更友好的无墙免费存储 API 节点
+const API_URL = "https://npoint.io";
 
 let globalDatabase = {
     "1": { name: "⚡ CYBER GAME IFUN (HÀ NỘI) ⚡", footer: "Khuyến mãi: Nạp 100k tặng 50k! Nghiêm cấm người dưới 18 tuổi.", zones: [{ name: "Khu Máy Thường", price1: "6.000", price2: "5.000" }, { name: "Khu VIP Box", price1: "15.000", price2: "12.000" }] },
@@ -70,18 +69,17 @@ async function loadFromCloud() {
     try {
         const response = await fetch(API_URL);
         if (response.ok) {
-            const dataText = await response.text();
-            if (dataText && dataText !== "null") {
-                globalDatabase = JSON.parse(dataText);
+            const data = await response.json();
+            if (data && typeof data === 'object') {
+                globalDatabase = data;
                 showStatus("Đã kết nối Cloud. Dữ liệu đã đồng bộ!", "success");
-            } else {
-                await uploadToCloud(globalDatabase);
-                showStatus("Khởi tạo database mới thành công!", "success");
             }
+        } else {
+            showStatus("Đang dùng dữ liệu Local mặc định", "success");
         }
         switchBar();
     } catch (error) {
-        showStatus("Lỗi kết nối. Đang dùng dữ liệu tạm thời!", "load");
+        showStatus("Đang dùng dữ liệu Local mặc định", "success");
         switchBar();
     }
 }
@@ -128,23 +126,21 @@ async function saveToCloud() {
         zone.price2 = document.getElementById(`p2-${index}`).value;
     });
 
-    const success = await uploadToCloud(globalDatabase);
-    if(success) {
-        showStatus("✨ Lưu thành công! Tất cả TV đã được đồng bộ.", "success");
-        alert('Lưu thành công!');
-    } else {
-        showStatus("Lỗi lưu dữ liệu!", "load");
-    }
-}
-
-async function uploadToCloud(data) {
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify(data)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(globalDatabase)
         });
-        return response.ok;
-    } catch (e) { return false; }
+        if (response.ok) {
+            showStatus("✨ Lưu thành công! Tất cả TV đã được đồng bộ.", "success");
+            alert('Lưu thành công (Lưu thành công)!');
+        } else {
+            showStatus("Lỗi khi lưu lên Cloud", "load");
+        }
+    } catch (e) {
+        showStatus("Lỗi kết nối mạng khi lưu", "load");
+    }
 }
 
 function showStatus(text, type) {
